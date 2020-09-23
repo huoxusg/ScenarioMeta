@@ -260,6 +260,7 @@ if __name__ == "__main__":
     os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
     device = torch.device('cuda:0')
     root_directory = args.root_directory
+    
     # load data
     user_embedding = torch.from_numpy(
         unserialize(os.path.join(root_directory, "embeddings/user_embeddings.npy")).astype(np.float32))
@@ -272,6 +273,7 @@ if __name__ == "__main__":
     if config['recommender'].get('user_graph', False) or config['recommender'].get('item_graph', False):
         back_ratings = unserialize(os.path.join(root_directory, "train_data/back_ratings"))
         user_neighbor_dict, item_neighbor_dict = get_neighbor_dict(back_ratings, user_dict, item_dict)
+    
     # data preprocess
     useritem_embeds, user_padding_idx, item_padding_idx = get_embedding(user_embedding, item_embedding)
     train_data, valid_data, test_data = get_data(train_data, test_data, user_dict, item_dict)
@@ -279,17 +281,20 @@ if __name__ == "__main__":
         user_neighbor_dict = NeighborDict(None)
     if not config['recommender'].get('item_graph', False):
         item_neighbor_dict = NeighborDict(None)
+    
     # define model
     criterion = loss.__getattribute__(
         config['training']['loss'])(**config['training']['loss_config'])
     gradient_model, model = get_model(useritem_embeds, user_neighbor_dict, item_neighbor_dict, criterion, config)
     gradient_model.to(device)
     model.to(device)
+    
     # optimizer
     config.setdefault('lr', {})
     for key in ['stop_lr', 'init_lr', 'update_lr']:
         config['lr'].setdefault(key, config['optim']['lr'])
     optimizer, scheduler = get_optimizer(gradient_model, config)
+    
     # save
     if config['save']:
         project_name = args.comment
